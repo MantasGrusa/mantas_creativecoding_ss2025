@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vilnius</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/three@0.141.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.141.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(40, 40, 80);
+  camera.lookAt(0, 0, 0);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  document.body.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 5, 0);
+  controls.update();
+
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444);
+  hemiLight.position.set(0, 200, 0);
+  scene.add(hemiLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(100, 100, 50);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(2048, 2048);
+  dirLight.shadow.camera.top = 100;
+  dirLight.shadow.camera.bottom = -100;
+  dirLight.shadow.camera.left = -100;
+  dirLight.shadow.camera.right = 100;
+  scene.add(dirLight);
+
+  const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+  const blockMaterials = {};
+  function block(x, y, z, color) {
+    if (!blockMaterials[color]) {
+      blockMaterials[color] = new THREE.MeshStandardMaterial({ color });
+    }
+    const cube = new THREE.Mesh(cubeGeo, blockMaterials[color]);
+    cube.position.set(x, y, z);
+    cube.castShadow = true;
+    cube.receiveShadow = true;
+    scene.add(cube);
+    return cube;
+  }
+
+  // Ground + Road
+  for (let x = -30; x <= 30; x++) {
+    for (let z = -60; z <= 60; z++) {
+      if (x === -1 || x === 0 || x === 1) {
+        block(x, 0, z, '#3fa34d'); // center grass median
+      } else {
+        block(x, 0, z, '#666'); // road
+      }
+
+      if (x === -30 || x === 30) {
+        block(x, 1, z, '#bbbbbb'); // sidewalk
+      }
+    }
+  }
+
+  // Trees
+  for (let z = -55; z <= 55; z += 10) {
+    [-29, 29].forEach(x => {
+      block(x, 2, z, '#8B4513');
+      block(x, 3, z, '#228B22');
+    });
+  }
+
+  // Moving cars (horizontal movement)
+  const cars = [];
+  const carMaterial = new THREE.MeshStandardMaterial({ color: '#ff3333' });
+  for (let z = -10; z <= 10; z += 20) {
+    const car = new THREE.Mesh(cubeGeo, carMaterial);
+    car.scale.set(2, 0.5, 5);
+    car.position.set(-25, 0.5, z);
+    car.castShadow = true;
+    scene.add(car);
+    cars.push(car);
+  }
+
+  // TV Tower
+  for (let x = -1; x <= 1; x++) {
+    for (let z = -1; z <= 1; z++) {
+      for (let y = 1; y <= 40; y++) {
+        block(10 + x, y, -55 + z, '#999999');
+      }
+    }
+  }
+
+  for (let x = -6; x <= 6; x++) {
+    for (let z = -6; z <= 6; z++) {
+      const dist2 = x * x + z * z;
+      if (dist2 <= 36) {
+        block(10 + x, 41, -55 + z, '#444');
+        block(10 + x, 42, -55 + z, '#336666');
+        if (dist2 >= 25) {
+          block(10 + x, 43, -55 + z, '#224444');
+        }
+      }
+    }
+  }
+
+  for (let y = 44; y <= 47; y++) {
+    block(10, y, -55, '#bb2222');
+  }
+
+  block(13, 43, -55, '#33aaff');
+  block(7, 43, -55, '#33aaff');
+  block(10, 43, -58, '#33aaff');
+  block(10, 43, -52, '#33aaff');
+
+  for (let y = 48; y <= 58; y++) {
+    block(10, y, -55, '#ff3333');
+  }
+
+  // Apartment building (long side rotated 90 degrees)
+  function apartmentBuilding(x, z, w = 12, h = 10, d = 4, mirrorX = false) {
+    for (let dz = 0; dz < w; dz++) {
+      for (let dy = 1; dy <= h; dy++) {
+        for (let dx = 0; dx < d; dx++) {
+          let color = '#cccccc';
+          if (dy % 2 === 1 && dz % 2 === 0 && dx === 0) {
+            color = '#88aaff'; // windows
+          }
+
+          const xi = mirrorX ? (x + d - 1 - dx) : (x + dx);
+          block(xi, dy, z + dz, color);
+        }
+      }
+    }
+
+    for (let dy = 1; dy <= h; dy++) {
+      for (let dz = 0; dz < w; dz++) {
+        const zi = z + dz;
+        const x0 = mirrorX ? (x + d - 1) : x;
+        const x1 = mirrorX ? x : (x + d - 1);
+        block(x0, dy, zi, '#444');
+        block(x1, dy, zi, '#444');
+      }
+    }
+
+    for (let dx = 0; dx < d; dx++) {
+      for (let dy = 1; dy <= h; dy++) {
+        const xi = mirrorX ? (x + d - 1 - dx) : (x + dx);
+        block(xi, dy, z + w, '#cc7755');
+      }
+    }
+  }
+
+  // Buildings on both sides of road, rotated
+  for (let z = -50; z <= 50; z += 25) {
+    apartmentBuilding(-34, z, 12, 10, 4, true); // mirror left buildings
+    apartmentBuilding(32, z, 12, 10, 4);        // right side normal
+  }
+
+
+  function animate() {
+    requestAnimationFrame(animate);
+    cars.forEach(car => {
+      car.position.z += 0.2;
+      if (car.position.z > 60) car.position.z = -60;
+
+    });
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+</script>
+</body>
+</html>
